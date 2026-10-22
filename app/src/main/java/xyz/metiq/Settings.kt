@@ -24,7 +24,7 @@ data class CustomMix(
 
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
 
-enum class StartupScreen { HOME, NOISE, AMBIENT, BINAURAL }
+enum class StartupScreen { HOME, NOISE, AMBIENT, BINAURAL, TINNITUS }
 
 data class Settings(
     val dynamicColorsEnabled: Boolean,
@@ -38,6 +38,12 @@ data class Settings(
     val themePreference: ThemePreference,
     val binauralVolume: Float,
     val binauralBand: String?,
+    val tinnitusHz: Float,
+    val tinnitusWaveform: String,
+    val tinnitusBandwidth: Float,
+    val tinnitusPan: Float,
+    val tinnitusVolume: Float,
+    val tinnitusMode: String?,
     val startupScreen: StartupScreen,
 )
 
@@ -55,6 +61,12 @@ val DEFAULT_SETTINGS = Settings(
     themePreference = ThemePreference.SYSTEM,
     binauralVolume = 0.5f,
     binauralBand = null,
+    tinnitusHz = 6000f,
+    tinnitusWaveform = "tone",
+    tinnitusBandwidth = 0.5f,
+    tinnitusPan = 0f,
+    tinnitusVolume = 0.35f,
+    tinnitusMode = null,
     startupScreen = StartupScreen.HOME,
 )
 
@@ -118,6 +130,12 @@ private object Keys {
     val STARTUP_SCREEN = stringPreferencesKey("startup_screen")
     val BINAURAL_VOLUME = floatPreferencesKey("binaural_volume")
     val BINAURAL_BAND = stringPreferencesKey("binaural_band")
+    val TINNITUS_HZ = floatPreferencesKey("tinnitus_hz")
+    val TINNITUS_WAVEFORM = stringPreferencesKey("tinnitus_waveform")
+    val TINNITUS_BANDWIDTH = floatPreferencesKey("tinnitus_bandwidth")
+    val TINNITUS_PAN = floatPreferencesKey("tinnitus_pan")
+    val TINNITUS_VOLUME = floatPreferencesKey("tinnitus_volume")
+    val TINNITUS_MODE = stringPreferencesKey("tinnitus_mode")
     val TIMER_PRESETS = stringPreferencesKey("timer_presets")
     val CUSTOM_MIXES = stringPreferencesKey("custom_mixes")
     val LANGUAGE_TAG = stringPreferencesKey("language_tag")
@@ -169,6 +187,33 @@ class SettingsRepository(context: Context) {
         store.edit {
             if (band == null) it.remove(Keys.BINAURAL_BAND)
             else it[Keys.BINAURAL_BAND] = band
+        }
+    }
+
+    suspend fun setTinnitusHz(hz: Float) {
+        store.edit { it[Keys.TINNITUS_HZ] = hz.coerceIn(100f, 16000f) }
+    }
+
+    suspend fun setTinnitusWaveform(waveform: String) {
+        store.edit { it[Keys.TINNITUS_WAVEFORM] = waveform }
+    }
+
+    suspend fun setTinnitusBandwidth(bandwidth: Float) {
+        store.edit { it[Keys.TINNITUS_BANDWIDTH] = bandwidth.coerceIn(0f, 1f) }
+    }
+
+    suspend fun setTinnitusPan(pan: Float) {
+        store.edit { it[Keys.TINNITUS_PAN] = pan.coerceIn(-1f, 1f) }
+    }
+
+    suspend fun setTinnitusVolume(volume: Float) {
+        store.edit { it[Keys.TINNITUS_VOLUME] = volume.coerceIn(0f, 1f) }
+    }
+
+    suspend fun setTinnitusMode(mode: String?) {
+        store.edit {
+            if (mode == null) it.remove(Keys.TINNITUS_MODE)
+            else it[Keys.TINNITUS_MODE] = mode
         }
     }
 
@@ -239,6 +284,16 @@ class SettingsRepository(context: Context) {
         val binauralVolume = (this[Keys.BINAURAL_VOLUME] ?: DEFAULT_SETTINGS.binauralVolume)
             .coerceIn(0f, 1f)
         val binauralBand = this[Keys.BINAURAL_BAND]
+        val tinnitusHz = (this[Keys.TINNITUS_HZ] ?: DEFAULT_SETTINGS.tinnitusHz)
+            .coerceIn(100f, 16000f)
+        val tinnitusWaveform = this[Keys.TINNITUS_WAVEFORM] ?: DEFAULT_SETTINGS.tinnitusWaveform
+        val tinnitusBandwidth = (this[Keys.TINNITUS_BANDWIDTH] ?: DEFAULT_SETTINGS.tinnitusBandwidth)
+            .coerceIn(0f, 1f)
+        val tinnitusPan = (this[Keys.TINNITUS_PAN] ?: DEFAULT_SETTINGS.tinnitusPan)
+            .coerceIn(-1f, 1f)
+        val tinnitusVolume = (this[Keys.TINNITUS_VOLUME] ?: DEFAULT_SETTINGS.tinnitusVolume)
+            .coerceIn(0f, 1f)
+        val tinnitusMode = this[Keys.TINNITUS_MODE]
         val startupScreen = this[Keys.STARTUP_SCREEN]
             ?.let { runCatching { StartupScreen.valueOf(it) }.getOrNull() }
             ?: DEFAULT_SETTINGS.startupScreen
@@ -254,6 +309,12 @@ class SettingsRepository(context: Context) {
             themePreference = themePreference,
             binauralVolume = binauralVolume,
             binauralBand = binauralBand,
+            tinnitusHz = tinnitusHz,
+            tinnitusWaveform = tinnitusWaveform,
+            tinnitusBandwidth = tinnitusBandwidth,
+            tinnitusPan = tinnitusPan,
+            tinnitusVolume = tinnitusVolume,
+            tinnitusMode = tinnitusMode,
             startupScreen = startupScreen,
         )
     }

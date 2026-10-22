@@ -34,6 +34,46 @@
     <string name="binaural_beta_feel">Focus</string>
     <string name="binaural_gamma_feel">Alertness</string>
 
+    <!-- Tinnitus matcher & canceller (4th generator) -->
+    <string name="category_tinnitus" translatable="false">Tinnitus</string>
+    <string name="sheet_tinnitus_subtitle" translatable="false">Tune to your pitch, then pick a relief mode.</string>
+    <string name="tinnitus_headphone_notice" translatable="false">Use headphones and start at a comfortable volume while sweeping the dial to match your pitch.</string>
+    <string name="tinnitus_tuner_title" translatable="false">FM Pitch Matcher</string>
+    <string name="tinnitus_audition_play" translatable="false">Test tone</string>
+    <string name="tinnitus_audition_stop" translatable="false">Testing…</string>
+    <string name="tinnitus_hz_format" translatable="false">%1$d Hz</string>
+    <string name="tinnitus_khz_format" translatable="false">%1$.2f kHz</string>
+    <string name="tinnitus_tap_to_edit_hz" translatable="false">Tap frequency to type exact Hz</string>
+    <string name="tinnitus_edit_hz_title" translatable="false">Set exact frequency (100–16000 Hz)</string>
+    <string name="tinnitus_edit_hz_confirm" translatable="false">Apply</string>
+    <string name="tinnitus_octave_half" translatable="false">÷2 Oct</string>
+    <string name="tinnitus_octave_double" translatable="false">×2 Oct</string>
+    <string name="tinnitus_nudge_minus_10" translatable="false">−10</string>
+    <string name="tinnitus_nudge_minus_1" translatable="false">−1</string>
+    <string name="tinnitus_nudge_plus_1" translatable="false">+1</string>
+    <string name="tinnitus_nudge_plus_10" translatable="false">+10</string>
+    <string name="tinnitus_waveform_label" translatable="false">Sound character</string>
+    <string name="tinnitus_waveform_tone" translatable="false">Pure tone</string>
+    <string name="tinnitus_waveform_narrowband" translatable="false">Narrowband hiss</string>
+    <string name="tinnitus_bandwidth_label" translatable="false">Band sharpness</string>
+    <string name="tinnitus_bandwidth_wide" translatable="false">Wide</string>
+    <string name="tinnitus_bandwidth_sharp" translatable="false">Sharp</string>
+    <string name="tinnitus_balance_label" translatable="false">Ear balance</string>
+    <string name="tinnitus_balance_left" translatable="false">L %1$d%%</string>
+    <string name="tinnitus_balance_center" translatable="false">Both ears</string>
+    <string name="tinnitus_balance_right" translatable="false">R %1$d%%</string>
+    <string name="tinnitus_balance_reset" translatable="false">Center</string>
+    <string name="tinnitus_modes_header" translatable="false">Add to mix or cancel</string>
+    <string name="tinnitus_mode_match" translatable="false">Matched masking</string>
+    <string name="tinnitus_mode_match_feel" translatable="false">As-is pitch blend</string>
+    <string name="tinnitus_mode_invert" translatable="false">Phase cancel</string>
+    <string name="tinnitus_mode_invert_feel" translatable="false">180° inverted wave</string>
+    <string name="tinnitus_mode_notch" translatable="false">Notch therapy</string>
+    <string name="tinnitus_mode_notch_feel" translatable="false">Carves pitch from noise</string>
+    <string name="tinnitus_mode_modulate" translatable="false">Neuromodulation</string>
+    <string name="tinnitus_mode_modulate_feel" translatable="false">CR desync tones</string>
+    <string name="tinnitus_noti_label" translatable="false">%1$s (%2$d Hz)</string>
+
     <!-- Mix presets -->
     <string name="mix_cabin">Cozy cabin</string>
     <string name="mix_beach">Tropical beach</string>

@@ -38,6 +38,13 @@ internal data class BinauralBand(
     val beatHz: Float,
 )
 
+internal data class TinnitusReliefMode(
+    val id: String,
+    @param:StringRes val labelRes: Int,
+    @param:StringRes val feelRes: Int,
+    val glyph: String,
+)
+
 internal data class MixPreset(
     val id: String,
     @param:StringRes val labelRes: Int,
@@ -74,6 +81,14 @@ internal val BINAURAL_BANDS = listOf(
     BinauralBand("gamma", R.string.binaural_gamma, R.string.binaural_gamma_feel, "γ", 40f),
 )
 internal val BINAURAL_BAND_IDS = BINAURAL_BANDS.map { it.id }.toSet()
+
+internal val TINNITUS_MODES = listOf(
+    TinnitusReliefMode("tinnitus_match", R.string.tinnitus_mode_match, R.string.tinnitus_mode_match_feel, "≈"),
+    TinnitusReliefMode("tinnitus_invert", R.string.tinnitus_mode_invert, R.string.tinnitus_mode_invert_feel, "−"),
+    TinnitusReliefMode("tinnitus_notch", R.string.tinnitus_mode_notch, R.string.tinnitus_mode_notch_feel, "⌖"),
+    TinnitusReliefMode("tinnitus_modulate", R.string.tinnitus_mode_modulate, R.string.tinnitus_mode_modulate_feel, "∿"),
+)
+internal val TINNITUS_MODE_IDS = TINNITUS_MODES.map { it.id }.toSet()
 
 internal val PREMADE_MIXES = listOf(
     MixPreset("cabin", R.string.mix_cabin, mapOf("fire" to 0.8f, "rain" to 0.45f)),
@@ -116,6 +131,17 @@ internal fun binauralAccentFor(id: String): Color {
         "beta" -> tokens.binauralBeta
         "gamma" -> tokens.binauralGamma
         else -> tokens.binauralAlpha
+    }
+}
+
+@Composable
+internal fun tinnitusAccentFor(id: String): Color {
+    val tokens = LocalMetiqColors.current
+    return when (id) {
+        "tinnitus_invert" -> tokens.tinnitusInvert
+        "tinnitus_notch" -> tokens.tinnitusNotch
+        "tinnitus_modulate" -> tokens.tinnitusModulate
+        else -> tokens.tinnitusMatch
     }
 }
 

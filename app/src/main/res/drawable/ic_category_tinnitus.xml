@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <!-- Upper wave (original signal) -->
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M5 20C8.5 10 13.5 10 17 20C20.5 30 25.5 30 29 20L35 20" />
+    <!-- Phase-inverted wave (cancelling signal) -->
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M5 20C8.5 30 13.5 30 17 20C20.5 10 25.5 10 29 20" />
+    <!-- Tuning dial needle / lock indicator -->
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M17 5V9M17 31V35" />
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M33 16V24" />
+</vector>

@@ -22,11 +22,16 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import kotlin.math.roundToInt
 import xyz.metiq.R
 import xyz.metiq.audio.BINAURAL_ID
 import xyz.metiq.audio.PlaybackService
+import xyz.metiq.audio.TINNITUS_ID
+import xyz.metiq.audio.TinnitusMode
+import xyz.metiq.audio.TinnitusWaveform
 
 private const val FALLBACK_BINAURAL_BAND = "alpha"
+private const val FALLBACK_TINNITUS_MODE = "tinnitus_match"
 
 @Stable
 internal class MixPlayback {
@@ -36,20 +41,32 @@ internal class MixPlayback {
         private set
     var playing by mutableStateOf(false)
         private set
+    var tinnitusAuditioning by mutableStateOf(false)
+        private set
     private var controller: MediaController? = null
 
     internal var binauralDefaultVolume = DEFAULT_SOUND_LEVEL
     internal var onBinauralBand: (String) -> Unit = {}
     internal var onBinauralVolume: (Float) -> Unit = {}
 
+    internal var tinnitusDefaultVolume = 0.35f
+    internal var tinnitusHz = 6000f
+    internal var tinnitusWaveform = "tone"
+    internal var tinnitusBandwidth = 0.5f
+    internal var tinnitusPan = 0f
+    internal var onTinnitusMode: (String) -> Unit = {}
+    internal var onTinnitusVolume: (Float) -> Unit = {}
+
     fun toggle(id: String) {
         if (id in levels) {
             remove(id)
         } else {
-            val level = if (id in BINAURAL_BAND_IDS) {
-                levels.entries.firstOrNull { it.key in BINAURAL_BAND_IDS }?.value ?: binauralDefaultVolume
-            } else {
-                DEFAULT_SOUND_LEVEL
+            val level = when (id) {
+                in BINAURAL_BAND_IDS ->
+                    levels.entries.firstOrNull { it.key in BINAURAL_BAND_IDS }?.value ?: binauralDefaultVolume
+                in TINNITUS_MODE_IDS ->
+                    levels.entries.firstOrNull { it.key in TINNITUS_MODE_IDS }?.value ?: tinnitusDefaultVolume
+                else -> DEFAULT_SOUND_LEVEL
             }
             add(id, level)
         }
@@ -66,12 +83,52 @@ internal class MixPlayback {
         when {
             level <= 0f -> remove(id)
             id in BINAURAL_BAND_IDS -> onBinauralVolume(level)
+            id in TINNITUS_MODE_IDS -> onTinnitusVolume(level)
         }
+    }
+
+    fun toggleTinnitusAudition() {
+        val engine = binder?.engine ?: return
+        if (tinnitusAuditioning) {
+            engine.stopTinnitusAudition()
+            tinnitusAuditioning = false
+        } else {
+            syncTinnitusEngineParams()
+            engine.startTinnitusAudition(tinnitusDefaultVolume)
+            tinnitusAuditioning = true
+        }
+    }
+
+    fun stopTinnitusAudition() {
+        binder?.engine?.stopTinnitusAudition()
+        tinnitusAuditioning = false
+    }
+
+    fun syncTinnitusEngineParams(
+        hz: Float = tinnitusHz,
+        waveform: String = tinnitusWaveform,
+        bandwidth: Float = tinnitusBandwidth,
+        pan: Float = tinnitusPan,
+    ) {
+        tinnitusHz = hz
+        tinnitusWaveform = waveform
+        tinnitusBandwidth = bandwidth
+        tinnitusPan = pan
+        val activeModeId = levels.keys.firstOrNull { it in TINNITUS_MODE_IDS }
+        val mode = activeModeId?.let { TinnitusMode.fromId(it) } ?: TinnitusMode.MATCH
+        binder?.engine?.setTinnitusParams(
+            hz = hz,
+            mode = mode,
+            waveform = TinnitusWaveform.fromKey(waveform),
+            bandwidth = bandwidth,
+            pan = pan,
+        )
     }
 
     fun applyMix(mix: Map<String, Float>) {
         val valid = mix.filter { (id, level) -> level > 0f && isKnownSound(id) }
         if (valid.isEmpty() || binder == null) return
+        stopTinnitusAudition()
         if (!mixMatches(levels, valid)) {
             levels.keys.filter { it !in valid }.forEach { remove(it, stopWhenEmpty = false) }
             valid.forEach { (id, level) -> if (id in levels) setLevel(id, level) else add(id, level) }
@@ -81,6 +138,7 @@ internal class MixPlayback {
 
     /** Removes every sound and stops playback. */
     fun clear() {
+        stopTinnitusAudition()
         if (levels.isEmpty()) return
         levels.keys.toList().forEach { remove(it, stopWhenEmpty = false) }
         controller?.stop()
@@ -116,6 +174,25 @@ internal class MixPlayback {
                 }
                 onBinauralBand(id)
             }
+            in TINNITUS_MODE_IDS -> {
+                stopTinnitusAudition()
+                val mode = TinnitusMode.fromId(id) ?: TinnitusMode.MATCH
+                val current = levels.keys.firstOrNull { it in TINNITUS_MODE_IDS }
+                engine.setTinnitusParams(
+                    hz = tinnitusHz,
+                    mode = mode,
+                    waveform = TinnitusWaveform.fromKey(tinnitusWaveform),
+                    bandwidth = tinnitusBandwidth,
+                    pan = tinnitusPan,
+                )
+                if (current != null) {
+                    levels.remove(current)
+                    engine.setLayerVolume(TINNITUS_ID, level)
+                } else {
+                    engine.startTinnitus(level)
+                }
+                onTinnitusMode(id)
+            }
 
             else -> return
         }
@@ -139,9 +216,14 @@ internal class MixPlayback {
         playing = true
     }
 
-    internal fun attach(bound: PlaybackService.EngineBinder, savedBand: String?) {
+    internal fun attach(
+        bound: PlaybackService.EngineBinder,
+        savedBand: String?,
+        savedTinnitusMode: String?,
+    ) {
         binder = bound
         val engine = bound.engine
+        syncTinnitusEngineParams()
         val ids = engine.activeLayerIds()
         ids.filter { it in NOISE_IDS || it in AMBIENT_IDS }.forEach { id ->
             if (id !in levels) levels[id] = engine.layerVolume(id) ?: DEFAULT_SOUND_LEVEL
@@ -150,10 +232,15 @@ internal class MixPlayback {
             val band = savedBand?.takeIf { it in BINAURAL_BAND_IDS } ?: FALLBACK_BINAURAL_BAND
             levels[band] = engine.layerVolume(BINAURAL_ID) ?: binauralDefaultVolume
         }
+        if (TINNITUS_ID in ids && levels.keys.none { it in TINNITUS_MODE_IDS }) {
+            val mode = savedTinnitusMode?.takeIf { it in TINNITUS_MODE_IDS } ?: FALLBACK_TINNITUS_MODE
+            levels[mode] = engine.layerVolume(TINNITUS_ID) ?: tinnitusDefaultVolume
+        }
     }
 
     internal fun detach() {
         binder = null
+        tinnitusAuditioning = false
     }
 
     internal fun attachController(c: MediaController?) {
@@ -178,10 +265,14 @@ internal class MixPlayback {
         }
     }
 
-    private fun engineId(id: String): String = if (id in BINAURAL_BAND_IDS) BINAURAL_ID else id
+    private fun engineId(id: String): String = when (id) {
+        in BINAURAL_BAND_IDS -> BINAURAL_ID
+        in TINNITUS_MODE_IDS -> TINNITUS_ID
+        else -> id
+    }
 
     private fun isKnownSound(id: String): Boolean =
-        id in NOISE_IDS || id in AMBIENT_IDS || id in BINAURAL_BAND_IDS
+        id in NOISE_IDS || id in AMBIENT_IDS || id in BINAURAL_BAND_IDS || id in TINNITUS_MODE_IDS
 }
 
 @Composable
@@ -190,14 +281,32 @@ internal fun rememberMixPlayback(
     binauralVolume: Float,
     onBinauralBand: (String) -> Unit,
     onBinauralVolume: (Float) -> Unit,
+    savedTinnitusMode: String? = null,
+    tinnitusVolume: Float = 0.35f,
+    tinnitusHz: Float = 6000f,
+    tinnitusWaveform: String = "tone",
+    tinnitusBandwidth: Float = 0.5f,
+    tinnitusPan: Float = 0f,
+    onTinnitusMode: (String) -> Unit = {},
+    onTinnitusVolume: (Float) -> Unit = {},
 ): MixPlayback {
     val context = LocalContext.current
     val playback = remember { MixPlayback() }
     val latestSavedBand by rememberUpdatedState(savedBinauralBand)
+    val latestSavedTinnitusMode by rememberUpdatedState(savedTinnitusMode)
     SideEffect {
         playback.binauralDefaultVolume = binauralVolume
         playback.onBinauralBand = onBinauralBand
         playback.onBinauralVolume = onBinauralVolume
+        playback.tinnitusDefaultVolume = tinnitusVolume
+        playback.onTinnitusMode = onTinnitusMode
+        playback.onTinnitusVolume = onTinnitusVolume
+        playback.syncTinnitusEngineParams(
+            hz = tinnitusHz,
+            waveform = tinnitusWaveform,
+            bandwidth = tinnitusBandwidth,
+            pan = tinnitusPan,
+        )
     }
 
     DisposableEffect(Unit) {
@@ -239,7 +348,11 @@ internal fun rememberMixPlayback(
 
         val conn = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, b: IBinder?) {
-                playback.attach(b as PlaybackService.EngineBinder, latestSavedBand)
+                playback.attach(
+                    bound = b as PlaybackService.EngineBinder,
+                    savedBand = latestSavedBand,
+                    savedTinnitusMode = latestSavedTinnitusMode,
+                )
                 connectController()
             }
 
@@ -260,7 +373,7 @@ internal fun rememberMixPlayback(
 }
 
 @Composable
-internal fun mixLabel(levels: Map<String, Float>, mixTitle: String?): String? {
+internal fun mixLabel(levels: Map<String, Float>, mixTitle: String?, tinnitusHz: Float = 6000f): String? {
     if (levels.isEmpty()) return null
     if (mixTitle != null) return mixTitle
     if (levels.size == 1) {
@@ -270,13 +383,21 @@ internal fun mixLabel(levels: Map<String, Float>, mixTitle: String?): String? {
         BINAURAL_BANDS.firstOrNull { it.id == id }?.let {
             return stringResource(R.string.binaural_noti_label, stringResource(it.labelRes))
         }
+        TINNITUS_MODES.firstOrNull { it.id == id }?.let {
+            return stringResource(R.string.tinnitus_noti_label, stringResource(it.labelRes), tinnitusHz.roundToInt())
+        }
     }
     return stringResource(R.string.mix_now_playing)
 }
 
 @Composable
-internal fun mixSoundNames(levels: Map<String, Float>): List<String> = buildList {
+internal fun mixSoundNames(levels: Map<String, Float>, tinnitusHz: Float = 6000f): List<String> = buildList {
     NOISE_COLORS.filter { it.id in levels }.forEach { add(stringResource(it.noiseTitleRes)) }
     AMBIENT_SOUNDS.filter { it.id in levels }.forEach { add(stringResource(it.labelRes)) }
-    BINAURAL_BANDS.filter { it.id in levels }.forEach { add(stringResource(R.string.binaural_noti_label, stringResource(it.labelRes))) }
+    BINAURAL_BANDS.filter { it.id in levels }.forEach {
+        add(stringResource(R.string.binaural_noti_label, stringResource(it.labelRes)))
+    }
+    TINNITUS_MODES.filter { it.id in levels }.forEach {
+        add(stringResource(R.string.tinnitus_noti_label, stringResource(it.labelRes), tinnitusHz.roundToInt()))
+    }
 }

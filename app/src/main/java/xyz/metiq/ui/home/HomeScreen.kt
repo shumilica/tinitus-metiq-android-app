@@ -87,6 +87,12 @@ fun HomeScreen(
     onStartupScreen: (StartupScreen) -> Unit,
     onBinauralVolume: (Float) -> Unit,
     onBinauralBand: (String?) -> Unit,
+    onTinnitusHz: (Float) -> Unit = {},
+    onTinnitusWaveform: (String) -> Unit = {},
+    onTinnitusBandwidth: (Float) -> Unit = {},
+    onTinnitusPan: (Float) -> Unit = {},
+    onTinnitusVolume: (Float) -> Unit = {},
+    onTinnitusMode: (String?) -> Unit = {},
     onTimerPresets: (List<Long>) -> Unit,
     onCustomMixes: (List<CustomMix>) -> Unit,
     onLanguageTag: (String?) -> Unit,
@@ -105,6 +111,7 @@ fun HomeScreen(
                 StartupScreen.NOISE -> SoundCategory.NOISE
                 StartupScreen.AMBIENT -> SoundCategory.AMBIENT
                 StartupScreen.BINAURAL -> SoundCategory.BINAURAL
+                StartupScreen.TINNITUS -> SoundCategory.TINNITUS
             }
         )
     }
@@ -118,6 +125,14 @@ fun HomeScreen(
         binauralVolume = settings.binauralVolume,
         onBinauralBand = onBinauralBand,
         onBinauralVolume = onBinauralVolume,
+        savedTinnitusMode = settings.tinnitusMode,
+        tinnitusVolume = settings.tinnitusVolume,
+        tinnitusHz = settings.tinnitusHz,
+        tinnitusWaveform = settings.tinnitusWaveform,
+        tinnitusBandwidth = settings.tinnitusBandwidth,
+        tinnitusPan = settings.tinnitusPan,
+        onTinnitusMode = onTinnitusMode,
+        onTinnitusVolume = onTinnitusVolume,
     )
     val binder = playback.binder
     val timer = rememberSleepTimerState(
@@ -172,7 +187,7 @@ fun HomeScreen(
     }
     
     val mixTitle = activeQuickMixes.minOrNull()?.let { quickMixes[it] }
-    val nowPlaying = mixLabel(playback.levels, mixTitle)
+    val nowPlaying = mixLabel(playback.levels, mixTitle, settings.tinnitusHz)
     
     LaunchedEffect(binder, nowPlaying) {
         binder?.setActiveLabel(nowPlaying)
@@ -200,6 +215,7 @@ fun HomeScreen(
                     onOpenSettings = { showSettings = true },
                     onSelectCategory = { openCategory = it },
                     levels = playback.levels,
+                    tinnitusHz = settings.tinnitusHz,
                     playing = playback.playing,
                     onPlayPause = playback::togglePlayPause,
                     onQuickMix = { index ->
@@ -239,7 +255,35 @@ fun HomeScreen(
                 onToggle = playback::toggle,
                 onLevel = playback::setLevel,
                 onLevelSettled = playback::settleLevel,
-                onDismiss = { openCategory = null },
+                onDismiss = {
+                    playback.stopTinnitusAudition()
+                    openCategory = null
+                },
+                tinnitusHz = settings.tinnitusHz,
+                tinnitusWaveform = settings.tinnitusWaveform,
+                tinnitusBandwidth = settings.tinnitusBandwidth,
+                tinnitusPan = settings.tinnitusPan,
+                tinnitusAuditioning = playback.tinnitusAuditioning,
+                onTinnitusHzPreview = { hz -> playback.syncTinnitusEngineParams(hz = hz) },
+                onTinnitusHzCommit = { hz ->
+                    playback.syncTinnitusEngineParams(hz = hz)
+                    onTinnitusHz(hz)
+                },
+                onTinnitusWaveformChange = { wf ->
+                    playback.syncTinnitusEngineParams(waveform = wf)
+                    onTinnitusWaveform(wf)
+                },
+                onTinnitusBandwidthPreview = { bw -> playback.syncTinnitusEngineParams(bandwidth = bw) },
+                onTinnitusBandwidthCommit = { bw ->
+                    playback.syncTinnitusEngineParams(bandwidth = bw)
+                    onTinnitusBandwidth(bw)
+                },
+                onTinnitusPanPreview = { pan -> playback.syncTinnitusEngineParams(pan = pan) },
+                onTinnitusPanCommit = { pan ->
+                    playback.syncTinnitusEngineParams(pan = pan)
+                    onTinnitusPan(pan)
+                },
+                onToggleTinnitusAudition = playback::toggleTinnitusAudition,
             )
         }
         if (showTimerSheet) {
@@ -323,6 +367,7 @@ private fun HomeCard(
     onOpenSettings: () -> Unit,
     onSelectCategory: (SoundCategory) -> Unit,
     levels: Map<String, Float>,
+    tinnitusHz: Float,
     playing: Boolean,
     onPlayPause: () -> Unit,
     onQuickMix: (Int) -> Unit,
@@ -403,7 +448,7 @@ private fun HomeCard(
         MixPanel(
             quickMixes = quickMixes,
             mixTitle = mixTitle,
-            soundNames = mixSoundNames(levels),
+            soundNames = mixSoundNames(levels, tinnitusHz),
             playing = playing,
             saveEnabled = saveEnabled,
             onPlayPause = onPlayPause,

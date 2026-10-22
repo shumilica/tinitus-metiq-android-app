@@ -46,10 +46,24 @@ internal fun CategorySheet(
     onLevel: (String, Float) -> Unit,
     onLevelSettled: (String) -> Unit,
     onDismiss: () -> Unit,
+    tinnitusHz: Float = 6000f,
+    tinnitusWaveform: String = "tone",
+    tinnitusBandwidth: Float = 0.5f,
+    tinnitusPan: Float = 0f,
+    tinnitusAuditioning: Boolean = false,
+    onTinnitusHzPreview: (Float) -> Unit = {},
+    onTinnitusHzCommit: (Float) -> Unit = {},
+    onTinnitusWaveformChange: (String) -> Unit = {},
+    onTinnitusBandwidthPreview: (Float) -> Unit = {},
+    onTinnitusBandwidthCommit: (Float) -> Unit = {},
+    onTinnitusPanPreview: (Float) -> Unit = {},
+    onTinnitusPanCommit: (Float) -> Unit = {},
+    onToggleTinnitusAudition: () -> Unit = {},
 ) {
     val ids = category.soundIds()
     val rows: @Composable ColumnScope.() -> Unit = {
         val selectedBand = levels.keys.firstOrNull { it in BINAURAL_BAND_IDS }
+        val selectedTinnitusMode = levels.keys.firstOrNull { it in TINNITUS_MODE_IDS }
         orderedSoundIds().filter { it in ids }.forEach { id ->
             SoundRow(
                 id = id,
@@ -57,7 +71,8 @@ internal fun CategorySheet(
                 onToggle = onToggle,
                 onLevel = onLevel,
                 onLevelSettled = onLevelSettled,
-                dimmed = category == SoundCategory.BINAURAL && selectedBand != null && selectedBand != id,
+                dimmed = (category == SoundCategory.BINAURAL && selectedBand != null && selectedBand != id) ||
+                    (category == SoundCategory.TINNITUS && selectedTinnitusMode != null && selectedTinnitusMode != id),
             )
         }
     }
@@ -85,6 +100,47 @@ internal fun CategorySheet(
                 )
             },
             content = rows,
+        )
+        SoundCategory.TINNITUS -> SoundSheet(
+            title = stringResource(R.string.category_tinnitus),
+            subtitle = stringResource(R.string.sheet_tinnitus_subtitle),
+            onDismiss = onDismiss,
+            notice = {
+                SheetNotice(
+                    icon = Icons.Outlined.Headphones,
+                    text = stringResource(R.string.tinnitus_headphone_notice),
+                )
+            },
+            content = {
+                val hasActiveReliefMode = levels.keys.any { it in TINNITUS_MODE_IDS }
+                TinnitusTunerCard(
+                    hz = tinnitusHz,
+                    waveform = tinnitusWaveform,
+                    bandwidth = tinnitusBandwidth,
+                    pan = tinnitusPan,
+                    auditioning = tinnitusAuditioning,
+                    hasActiveReliefMode = hasActiveReliefMode,
+                    onHzPreview = onTinnitusHzPreview,
+                    onHzCommit = onTinnitusHzCommit,
+                    onWaveformChange = onTinnitusWaveformChange,
+                    onBandwidthPreview = onTinnitusBandwidthPreview,
+                    onBandwidthCommit = onTinnitusBandwidthCommit,
+                    onPanPreview = onTinnitusPanPreview,
+                    onPanCommit = onTinnitusPanCommit,
+                    onToggleAudition = onToggleTinnitusAudition,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.tinnitus_modes_header),
+                    color = LocalMetiqColors.current.textSecondary,
+                    style = TextStyle(
+                        fontFamily = Inter,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                )
+                rows()
+            },
         )
     }
 }
@@ -193,7 +249,10 @@ private fun SaveMixSheetButton(enabled: Boolean, onClick: () -> Unit, modifier: 
 }
 
 private fun orderedSoundIds(): List<String> =
-    NOISE_COLORS.map { it.id } + AMBIENT_SOUNDS.map { it.id } + BINAURAL_BANDS.map { it.id }
+    NOISE_COLORS.map { it.id } +
+        AMBIENT_SOUNDS.map { it.id } +
+        BINAURAL_BANDS.map { it.id } +
+        TINNITUS_MODES.map { it.id }
 
 @Composable
 private fun SoundRow(
@@ -264,6 +323,29 @@ private fun SoundRow(
             icon = { tint ->
                 Text(
                     text = band.glyph,
+                    color = tint,
+                    style = TextStyle(fontFamily = Inter, fontSize = 24.sp, fontWeight = FontWeight.SemiBold),
+                )
+            },
+        )
+        return
+    }
+    TINNITUS_MODES.firstOrNull { it.id == id }?.let { mode ->
+        val accent = tinnitusAccentFor(mode.id)
+        SoundLevelRow(
+            label = stringResource(mode.labelRes),
+            detail = stringResource(mode.feelRes),
+            orbColor = lerp(accent, tokens.accentHighlight, 0.40f),
+            trackColor = accent,
+            level = level,
+            onToggle = { onToggle(id) },
+            onLevel = { onLevel(id, it) },
+            onLevelSettled = { onLevelSettled(id) },
+            dimmed = dimmed,
+            showBadge = showBadge,
+            icon = { tint ->
+                Text(
+                    text = mode.glyph,
                     color = tint,
                     style = TextStyle(fontFamily = Inter, fontSize = 24.sp, fontWeight = FontWeight.SemiBold),
                 )

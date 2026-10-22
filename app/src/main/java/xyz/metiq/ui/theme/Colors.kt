@@ -35,9 +35,14 @@ data class MetiqColorTokens(
     val ambientWind: Color,
     val ambientCrickets: Color,
     val ambientStream: Color,
+    val tinnitusMatch: Color,
+    val tinnitusInvert: Color,
+    val tinnitusNotch: Color,
+    val tinnitusModulate: Color,
     val categoryNoise: Color,
     val categoryAmbient: Color,
     val categoryBinaural: Color,
+    val categoryTinnitus: Color,
 )
 
 object MetiqColors {
@@ -58,12 +63,18 @@ object MetiqColors {
     private val CategoryNoise = Color(0xFFCAE7F3)
     private val CategoryAmbient = Color(0xFFDBF1B3)
     private val CategoryBinaural = Color(0xFFABAAFE)
+    private val CategoryTinnitus = Color(0xFFF7C5B8)
 
     private val BinauralDelta = Color(0xFF7B6CF6)
     private val BinauralTheta = Color(0xFF4C7BE8)
     private val BinauralAlpha = Color(0xFF2FA9A0)
     private val BinauralBeta = Color(0xFFCB9A2E)
     private val BinauralGamma = Color(0xFFDF6478)
+
+    private val TinnitusMatch = Color(0xFF38B2AC)
+    private val TinnitusInvert = Color(0xFFE56B6F)
+    private val TinnitusNotch = Color(0xFF5E81F4)
+    private val TinnitusModulate = Color(0xFFE09F3E)
 
     val Dark = MetiqColorTokens(
         background = Color(0xFF111010),
@@ -98,9 +109,14 @@ object MetiqColors {
         ambientWind = AmbientWind,
         ambientCrickets = AmbientCrickets,
         ambientStream = AmbientStream,
+        tinnitusMatch = TinnitusMatch,
+        tinnitusInvert = TinnitusInvert,
+        tinnitusNotch = TinnitusNotch,
+        tinnitusModulate = TinnitusModulate,
         categoryNoise = CategoryNoise,
         categoryAmbient = CategoryAmbient,
         categoryBinaural = CategoryBinaural,
+        categoryTinnitus = CategoryTinnitus,
     )
 
     val Light = MetiqColorTokens(
@@ -136,8 +152,13 @@ object MetiqColors {
         ambientWind = AmbientWind,
         ambientCrickets = AmbientCrickets,
         ambientStream = AmbientStream,
+        tinnitusMatch = TinnitusMatch,
+        tinnitusInvert = TinnitusInvert,
+        tinnitusNotch = TinnitusNotch,
+        tinnitusModulate = TinnitusModulate,
         categoryNoise = CategoryNoise,
         categoryAmbient = CategoryAmbient,
         categoryBinaural = CategoryBinaural,
+        categoryTinnitus = CategoryTinnitus,
     )
 }

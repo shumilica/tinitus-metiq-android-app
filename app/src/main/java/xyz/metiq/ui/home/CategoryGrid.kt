@@ -63,12 +63,14 @@ internal enum class SoundCategory(
     NOISE(R.string.category_noise, R.drawable.ic_category_noise),
     AMBIENT(R.string.category_ambient, R.drawable.ic_category_ambient),
     BINAURAL(R.string.category_binaural, R.drawable.ic_category_binaural),
+    TINNITUS(R.string.category_tinnitus, R.drawable.ic_category_tinnitus),
 }
 
 internal fun SoundCategory.soundIds(): Set<String> = when (this) {
     SoundCategory.NOISE -> NOISE_IDS
     SoundCategory.AMBIENT -> AMBIENT_IDS
     SoundCategory.BINAURAL -> BINAURAL_BAND_IDS
+    SoundCategory.TINNITUS -> TINNITUS_MODE_IDS
 }
 
 @Composable
@@ -78,6 +80,7 @@ internal fun SoundCategory.accent(): Color {
         SoundCategory.NOISE -> tokens.categoryNoise
         SoundCategory.AMBIENT -> tokens.categoryAmbient
         SoundCategory.BINAURAL -> tokens.categoryBinaural
+        SoundCategory.TINNITUS -> tokens.categoryTinnitus
     }
 }
 

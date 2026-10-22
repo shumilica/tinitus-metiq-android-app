@@ -120,6 +120,7 @@ private fun startupScreenLabelRes(screen: StartupScreen): Int = when (screen) {
     StartupScreen.NOISE -> R.string.category_noise
     StartupScreen.AMBIENT -> R.string.category_ambient
     StartupScreen.BINAURAL -> R.string.category_binaural
+    StartupScreen.TINNITUS -> R.string.category_tinnitus
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
