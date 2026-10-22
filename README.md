@@ -7,82 +7,68 @@
 <br />
 
 <p align="center">
-  No-nonsense noise app for focus, sleep, study, and relaxation.
+  No-nonsense noise app for focus, sleep, study, relaxation, and <strong>tinnitus relief &amp; cancellation</strong>.
 </p>
 
 <br />
 
 <p align="center">
     <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3">
-    <img src="https://github.com/metiq-xyz/android-app/actions/workflows/ci.yml/badge.svg" alt="CI">
+    <img src="https://github.com/shumilica/tinitus-metiq-android-app/actions/workflows/ci.yml/badge.svg" alt="CI">
 </p>
 
-<p align="center">
-    <a href="https://github.com/sponsors/metiq-xyz"><img src="https://img.shields.io/badge/Sponsor-30363D?style=for-the-badge&logo=GitHub-Sponsors&logoColor=EA4AAA" alt="GitHub Sponsors"></a>
-    <a href="https://ko-fi.com/metiq"><img src="https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white" alt="Ko-Fi"></a>
-    <a href="https://liberapay.com/metiq/"><img src="https://img.shields.io/badge/Liberapay-F6C915?style=for-the-badge&logo=liberapay&logoColor=black" alt="Liberapay"></a>
+# Metiq — Tinnitus Edition
 
-</p>
+This is a fork of [Metiq (`metiq-xyz/android-app`)](https://github.com/metiq-xyz/android-app) that adds a **4th real-time sound generator category: Tinnitus Matcher & Canceller**, alongside Colored Noise, Ambient Sounds, and Binaural Beats.
 
-<p align="center">
-    <a href="https://f-droid.org/packages/xyz.metiq"><img src=".github/static/badges/giofd.png" alt="Get it on F-Droid" height="60"></a>
-    <a href="https://play.google.com/store/apps/details?id=xyz.metiq"><img src=".github/static/badges/giogp.png" alt="Get it on Google Play" height="60"></a>
-</p>
+---
 
-# Metiq
+## Tinnitus Matcher & Canceller (4th Generator)
 
-A no-nonsense noise app for focus, sleep, study, and relaxation. Colored noise
-(white, pink, brown, grey), natural ambient sounds you can layer into your own
-mixes, and binaural beats — with a sleep timer. Designed around two
-non-negotiables: simplicity and battery efficiency.
+Tinnitus varies widely from person to person in pitch, texture, and ear lateralization. The **Tinnitus** generator provides an interactive **FM-Radio Pitch Matcher** paired with four real-time digital signal processing (DSP) relief and cancellation modes inside `AudioEngine`:
 
-## What it does
+### 1. FM Pitch Matcher & Sound Shaping
+- **Logarithmic FM-Radio Frequency Dial (`100 Hz – 16,000 Hz`)**: Sweep smoothly across human pitch perception to locate the exact frequency where the external sound matches your internal tinnitus.
+- **Tap-to-Edit Exact Frequency**: Tap the digital Hz/kHz readout to type an exact integer frequency (`100`–`16000 Hz`).
+- **Fine-Tuning & Anti-Octave-Confusion Controls**:
+  - Step by **`−10 Hz`**, **`−1 Hz`**, **`+1 Hz`**, or **`+10 Hz`** to lock onto your exact resonant frequency.
+  - Check **`÷2 Oct`** and **`×2 Oct`** to prevent *octave confusion* (matching one octave below or above your actual tinnitus pitch).
+- **Live Test Tone (`Test tone`)**: Audition your frequency live while sweeping the FM dial before adding a relief mode to your mix.
+- **Sound Character (`Pure tone` vs. `Narrowband hiss`) & Band Sharpness**: Match tonal ringing with a phase-continuous sine wave or match hissing/sizzling tinnitus with a real-time 2nd-order Biquad Band-Pass filter with adjustable sharpness ($Q \in [2, 24]$).
+- **Left / Right Ear Balance**: Constant-power stereo panning (`L 100%` $\leftrightarrow$ `Both ears` $\leftrightarrow$ `R 100%`) to target unilateral or asymmetric tinnitus without fatiguing the unaffected ear.
 
-- **Colored noise playback** — pre-rendered, seamless loops at -22 LUFS so every
-  color sounds equally loud.
-- **Ambient sounds and mixes** — sea waves, rain, fire, birds, café, and wind.
-  Layer them at independent levels, start from a preset, or save your own mixes.
-- **Binaural beats** — layer brainwave tones (Delta through Gamma) over any
-  noise or ambient sound to nudge toward sleep, relaxation, or focus. Headphones
-  needed.
-- **Sleep timer** — set hours, minutes, and seconds, or pick from your saved
-  presets. Audio fades out gracefully when the timer expires.
-- **Stays out of your way** — no accounts, no cloud, no tracking, no ads. The
-  app runs without an internet connection.
-- **Light on your battery** — a lean, native audio pipeline built on Android's
-  `AudioTrack`, with a small memory and CPU footprint.
-- **Familiar media controls** — lock screen, notification, and Bluetooth headset
-  transport buttons all work the way you'd expect.
-- **Five languages out of the box** — English, Italian, Spanish, French,
-  Portuguese.
-- **Free, forever** — Metiq is free and will stay free. If you'd like to support
-  the project, you can [sponsor us on GitHub](https://github.com/sponsors/metiq-xyz),
-  [buy us a coffee on Ko-fi](https://ko-fi.com/metiq), or
-  [donate on Liberapay](https://liberapay.com/metiq/)
+### 2. Four Real-Time Relief & Cancellation Modes
+Once you match your tinnitus pitch, you can add it to your mix using any of four modes:
+1. **Matched Masking (`≈`) — As-Is Pitch Blend**: Plays your matched frequency and waveform directly in the mix to blend with your tinnitus and trigger *residual inhibition*.
+2. **Phase Cancel (`−`) — 180° Inverted Wave**: Synthesizes a $180^\circ$ phase-inverted waveform ($-\sin(\phi)$) with a gentle $0.25\text{ Hz}$ antiphase stereo opposition sweep.
+3. **Notch Therapy (`⌖`) — Tailor-Made Notched Sound Therapy**: Carves a real-time 2nd-order Biquad Band-Stop (Notch) Filter centered at your exact tinnitus frequency directly out of active **Noise** and **Ambient** layers (plus a soft notched pink-noise companion bed), using lateral inhibition in the auditory cortex to suppress hyperactive tinnitus neurons.
+4. **Neuromodulation (`∿`) — Acoustic Coordinated Reset (CR) Tones**: Plays gentle, Hanning-windowed tone bursts cycling randomly across the four clinical CR harmonic ratios ($0.766 f_T, 0.900 f_T, 1.100 f_T, 1.305 f_T$) to desynchronize hyperactive neural clusters.
 
-## Where to get it
+All tuned tinnitus parameters (frequency, sound character, sharpness, ear balance, volume, and active relief mode) are automatically persisted on-device and can be saved into one-tap **Quick Mixes** on the Home screen.
 
-- [**F-Droid**](https://f-droid.org/packages/xyz.metiq)
-- [**Google Play**](https://play.google.com/store/apps/details?id=xyz.metiq)
-- **Direct APK**: built and attached to all
-  [releases](https://github.com/metiq-xyz/android-app/releases) on this
-  repository
+---
 
-Metiq targets Android 9 (API 28) and newer, which covers the vast majority of
-devices in active use today.
+## Core Metiq Features
 
-## Contributing
+- **Colored noise playback** — pre-rendered, seamless loops (Pink, Brown, White, Grey) at -22 LUFS so every color sounds equally loud, with an adjustable Warmth low-pass filter.
+- **Ambient sounds and mixes** — sea waves, rain, fire crackling, birds chirping, café ambience, wind, crickets, and stream. Layer them at independent levels, start from a preset, or save your own custom mixes.
+- **Binaural beats** — layer brainwave tones (Delta, Theta, Alpha, Beta, Gamma) over any noise, ambient, or tinnitus layer. Headphones needed.
+- **Sleep timer** — set hours, minutes, and seconds, or pick from your saved presets. Audio fades out gracefully when the timer expires.
+- **Stays out of your way** — no accounts, no cloud, no tracking, no ads. The app runs 100% offline.
+- **Light on your battery** — a lean, native audio pipeline built on Android's `AudioTrack` at 48 kHz, with a small memory and CPU footprint.
+- **Familiar media controls** — lock screen, notification, and Bluetooth headset transport buttons all work the way you'd expect.
 
-If you'd like to file a bug, suggest a feature, or contribute code or
-translations, see **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup instructions,
-the architecture overview, and the development workflow.
+## Getting the APK
 
-## Credits
+Every push to `main` automatically builds debug APKs (`app-fdroid-debug` and `app-play-debug`) via **[GitHub Actions](https://github.com/shumilica/tinitus-metiq-android-app/actions)**. Open the latest workflow run and download the APK from the **Artifacts** section at the bottom of the run page.
 
-Metiq is built on the work of others — Jetpack Compose, Material 3, AndroidX
-Media3, the Kotlin standard library, and the Inter typeface by Rasmus Andersson.
-Full attribution is available inside the app under \_Settings → About →
-Open-source licenses.
+Metiq targets Android 9 (API 28) and newer.
+
+## Contributing & Upstream Credits
+
+- Upstream project: **[metiq-xyz/android-app](https://github.com/metiq-xyz/android-app)**
+- Architecture and development setup: see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+- Built with Jetpack Compose, Material 3, AndroidX Media3, the Kotlin standard library, and the Inter typeface by Rasmus Andersson.
 
 ## License
 
