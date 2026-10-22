@@ -29,12 +29,25 @@ jobs:
           java-version: "21"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          job-summary: true
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Lint
-        run: ./gradlew lint${{ matrix.task }}Debug
+        run: ./gradlew lint${{ matrix.task }}Debug --stacktrace
+      - name: Publish Lint Summary
+        if: always()
+        run: |
+          echo "### Android Lint Summary (${{ matrix.flavor }})" >> "$GITHUB_STEP_SUMMARY"
+          if compgen -G "app/build/reports/lint-results-*.txt" > /dev/null; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            head -n 120 app/build/reports/lint-results-*.txt >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Lint completed." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Build debug APK
-        run: ./gradlew assemble${{ matrix.task }}Debug
+        run: ./gradlew assemble${{ matrix.task }}Debug --stacktrace
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:

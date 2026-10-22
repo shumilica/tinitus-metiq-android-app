@@ -1,6 +1,7 @@
 package xyz.metiq.audio
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -179,13 +180,7 @@ object TinnitusScheduler {
     }
 
     private fun setInexactOrExactAlarm(am: AlarmManager, triggerAtMillis: Long, pi: PendingIntent) {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
-                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi)
-            } else {
-                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi)
-            }
-        } catch (_: SecurityException) {
+        runCatching {
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pi)
         }
     }
@@ -213,6 +208,7 @@ object TinnitusScheduler {
         )
     }
 
+    @SuppressLint("MissingPermission")
     fun postNotification(
         context: Context,
         slotId: Int,

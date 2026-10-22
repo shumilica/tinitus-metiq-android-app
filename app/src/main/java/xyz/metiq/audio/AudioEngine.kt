@@ -1,5 +1,6 @@
 package xyz.metiq.audio
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
@@ -131,7 +132,7 @@ class AudioEngine(private val context: Context) {
     private var tinnitusEdgeBoost: Float = 0.6f
 
     @Volatile
-    private var tinnitusStdpDelayMs: Int = -8
+    private var tinnitusStdpDelayMs: Float = 12f
 
     @Volatile
     private var tinnitusAntiHabituation: Boolean = true
@@ -167,6 +168,7 @@ class AudioEngine(private val context: Context) {
         tinnitusMode == TinnitusMode.NOTCH &&
             (layers.containsKey(TINNITUS_ID) || startJobs.containsKey(TINNITUS_ID))
 
+    @SuppressLint("MissingPermission")
     private fun fireMicroHapticPulse() {
         val v = vibrator ?: return
         if (!v.hasVibrator()) return
@@ -448,7 +450,7 @@ class AudioEngine(private val context: Context) {
         pan: Float = this.tinnitusPan,
         amHz: Float = this.tinnitusAmHz,
         edgeBoost: Float = this.tinnitusEdgeBoost,
-        stdpDelayMs: Int = this.tinnitusStdpDelayMs,
+        stdpDelayMs: Float = this.tinnitusStdpDelayMs,
         antiHabituation: Boolean = this.tinnitusAntiHabituation,
     ) {
         this.tinnitusHz = hz.coerceIn(100f, 16000f)
@@ -458,7 +460,7 @@ class AudioEngine(private val context: Context) {
         this.tinnitusPan = pan.coerceIn(-1f, 1f)
         this.tinnitusAmHz = amHz.coerceIn(1f, 80f)
         this.tinnitusEdgeBoost = edgeBoost.coerceIn(0f, 1f)
-        this.tinnitusStdpDelayMs = stdpDelayMs.coerceIn(-15, 15)
+        this.tinnitusStdpDelayMs = stdpDelayMs.coerceIn(-25f, 25f)
         this.tinnitusAntiHabituation = antiHabituation
     }
 
@@ -739,10 +741,10 @@ class AudioEngine(private val context: Context) {
                     val sweepInc = twoPi * 0.25 / sr
 
                     // Bimodal STDP timing offset: audio burst starts at sample 2000 of the 9600-sample cycle;
-                    // Haptic pulse fires at sample (2000 - stdpDelaySamples) so negative delay = haptic precedes/pairs with audio
+                    // Haptic pulse fires at sample (2000 - stdpDelaySamples) so positive delayMs = haptic precedes/pairs with audio
                     val audioBurstStartSample = 2000
-                    val stdpDelaySamples = (tinnitusStdpDelayMs * sr / 1000).coerceIn(-1500, 1500)
-                    val hapticTriggerSample = (audioBurstStartSample + stdpDelaySamples).coerceIn(0, bimodalCycleSamples - 1)
+                    val stdpDelaySamples = (tinnitusStdpDelayMs * sr / 1000f).toInt().coerceIn(-1500, 1500)
+                    val hapticTriggerSample = (audioBurstStartSample - stdpDelaySamples).coerceIn(0, bimodalCycleSamples - 1)
 
                     for (f in 0 until block) {
                         var sampleL: Double
