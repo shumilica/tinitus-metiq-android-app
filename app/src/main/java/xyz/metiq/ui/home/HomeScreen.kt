@@ -60,6 +60,7 @@ import xyz.metiq.R
 import xyz.metiq.Settings
 import xyz.metiq.StartupScreen
 import xyz.metiq.ThemePreference
+import xyz.metiq.TinnitusScheduleSlot
 import xyz.metiq.ui.FEEDBACK_URL
 import xyz.metiq.ui.LicensesScreen
 import xyz.metiq.ui.SUPPORT_URL
@@ -87,12 +88,19 @@ fun HomeScreen(
     onStartupScreen: (StartupScreen) -> Unit,
     onBinauralVolume: (Float) -> Unit,
     onBinauralBand: (String?) -> Unit,
-    onTinnitusHz: (Float) -> Unit = {},
-    onTinnitusWaveform: (String) -> Unit = {},
-    onTinnitusBandwidth: (Float) -> Unit = {},
-    onTinnitusPan: (Float) -> Unit = {},
     onTinnitusVolume: (Float) -> Unit = {},
     onTinnitusMode: (String?) -> Unit = {},
+    onSaveTinnitusCalibration: (hz: Float, waveform: String, bandwidth: Float, pan: Float, threshold: Float, mml: Float) -> Unit = { _, _, _, _, _, _ -> },
+    onTinnitusAmHz: (Float) -> Unit = {},
+    onTinnitusEdgeBoost: (Float) -> Unit = {},
+    onTinnitusStdpDelay: (Float) -> Unit = {},
+    onTinnitusAntiHabituation: (Boolean) -> Unit = {},
+    onTinnitusAutoTimer: (Boolean) -> Unit = {},
+    onTinnitusRemindersEnabled: (Boolean) -> Unit = {},
+    onTinnitusScheduleSlots: (List<TinnitusScheduleSlot>) -> Unit = {},
+    pendingScheduledMode: String? = null,
+    pendingScheduledDurationMin: Int? = null,
+    onConsumeScheduledLaunch: () -> Unit = {},
     onTimerPresets: (List<Long>) -> Unit,
     onCustomMixes: (List<CustomMix>) -> Unit,
     onLanguageTag: (String?) -> Unit,
@@ -127,10 +135,17 @@ fun HomeScreen(
         onBinauralVolume = onBinauralVolume,
         savedTinnitusMode = settings.tinnitusMode,
         tinnitusVolume = settings.tinnitusVolume,
+        tinnitusThreshold = settings.tinnitusThreshold,
+        tinnitusMml = settings.tinnitusMml,
         tinnitusHz = settings.tinnitusHz,
         tinnitusWaveform = settings.tinnitusWaveform,
         tinnitusBandwidth = settings.tinnitusBandwidth,
         tinnitusPan = settings.tinnitusPan,
+        tinnitusAmHz = settings.tinnitusAmHz,
+        tinnitusEdgeBoost = settings.tinnitusEdgeBoost,
+        tinnitusStdpDelayMs = settings.tinnitusStdpDelayMs,
+        tinnitusAntiHabituation = settings.tinnitusAntiHabituation,
+        tinnitusAutoTimer = settings.tinnitusAutoTimer,
         onTinnitusMode = onTinnitusMode,
         onTinnitusVolume = onTinnitusVolume,
     )
@@ -139,6 +154,17 @@ fun HomeScreen(
         onStart = { seconds -> binder?.startSleepTimer(seconds) },
         onCancel = { binder?.cancelSleepTimer() },
     )
+
+    LaunchedEffect(binder, pendingScheduledMode, pendingScheduledDurationMin) {
+        if (binder != null && pendingScheduledMode != null) {
+            playback.startScheduledTinnitusSession(
+                modeId = pendingScheduledMode,
+                durationMinutes = pendingScheduledDurationMin ?: 30,
+            )
+            openCategory = SoundCategory.TINNITUS
+            onConsumeScheduledLaunch()
+        }
+    }
 
     LaunchedEffect(Unit) {
         delay(RATE_PROMPT_DELAY_MS)
@@ -263,27 +289,48 @@ fun HomeScreen(
                 tinnitusWaveform = settings.tinnitusWaveform,
                 tinnitusBandwidth = settings.tinnitusBandwidth,
                 tinnitusPan = settings.tinnitusPan,
+                tinnitusThreshold = settings.tinnitusThreshold,
+                tinnitusMml = settings.tinnitusMml,
+                tinnitusCalibrated = settings.tinnitusCalibrated,
+                tinnitusAmHz = settings.tinnitusAmHz,
+                tinnitusEdgeBoost = settings.tinnitusEdgeBoost,
+                tinnitusStdpDelayMs = settings.tinnitusStdpDelayMs,
+                tinnitusAntiHabituation = settings.tinnitusAntiHabituation,
+                tinnitusAutoTimer = settings.tinnitusAutoTimer,
+                tinnitusHistory = settings.tinnitusHistory,
+                tinnitusRemindersEnabled = settings.tinnitusRemindersEnabled,
+                tinnitusScheduleSlots = settings.tinnitusScheduleSlots,
                 tinnitusAuditioning = playback.tinnitusAuditioning,
-                onTinnitusHzPreview = { hz -> playback.syncTinnitusEngineParams(hz = hz) },
-                onTinnitusHzCommit = { hz ->
-                    playback.syncTinnitusEngineParams(hz = hz)
-                    onTinnitusHz(hz)
+                onTinnitusAuditionPlay = { overrideHz, pulsed, vol, wf, bw, p ->
+                    playback.playTinnitusAudition(overrideHz, pulsed, vol, wf, bw, p)
                 },
-                onTinnitusWaveformChange = { wf ->
-                    playback.syncTinnitusEngineParams(waveform = wf)
-                    onTinnitusWaveform(wf)
+                onTinnitusAuditionStop = playback::stopTinnitusAudition,
+                onSaveTinnitusCalibration = { hz, wf, bw, pan, thr, mml ->
+                    playback.syncTinnitusEngineParams(hz = hz, waveform = wf, bandwidth = bw, pan = pan)
+                    onSaveTinnitusCalibration(hz, wf, bw, pan, thr, mml)
                 },
-                onTinnitusBandwidthPreview = { bw -> playback.syncTinnitusEngineParams(bandwidth = bw) },
-                onTinnitusBandwidthCommit = { bw ->
-                    playback.syncTinnitusEngineParams(bandwidth = bw)
-                    onTinnitusBandwidth(bw)
+                onTinnitusAmHzChange = { am ->
+                    playback.syncTinnitusEngineParams(amHz = am)
+                    onTinnitusAmHz(am)
                 },
-                onTinnitusPanPreview = { pan -> playback.syncTinnitusEngineParams(pan = pan) },
-                onTinnitusPanCommit = { pan ->
-                    playback.syncTinnitusEngineParams(pan = pan)
-                    onTinnitusPan(pan)
+                onTinnitusEdgeBoostChange = { boost ->
+                    playback.syncTinnitusEngineParams(edgeBoost = boost)
+                    onTinnitusEdgeBoost(boost)
                 },
-                onToggleTinnitusAudition = playback::toggleTinnitusAudition,
+                onTinnitusStdpDelayChange = { delayMs ->
+                    playback.syncTinnitusEngineParams(stdpDelayMs = delayMs)
+                    onTinnitusStdpDelay(delayMs)
+                },
+                onTinnitusAntiHabituationChange = { antiHab ->
+                    playback.syncTinnitusEngineParams(antiHabituation = antiHab)
+                    onTinnitusAntiHabituation(antiHab)
+                },
+                onTinnitusAutoTimerChange = onTinnitusAutoTimer,
+                onTinnitusRemindersEnabledChange = onTinnitusRemindersEnabled,
+                onTinnitusScheduleSlotsChange = onTinnitusScheduleSlots,
+                onStartScheduledTinnitusSession = { modeId, durationMin ->
+                    playback.startScheduledTinnitusSession(modeId, durationMin)
+                },
             )
         }
         if (showTimerSheet) {

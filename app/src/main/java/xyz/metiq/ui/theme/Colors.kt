@@ -35,10 +35,13 @@ data class MetiqColorTokens(
     val ambientWind: Color,
     val ambientCrickets: Color,
     val ambientStream: Color,
+    val tinnitusAmRi: Color,
+    val tinnitusBimodal: Color,
     val tinnitusMatch: Color,
     val tinnitusInvert: Color,
     val tinnitusNotch: Color,
     val tinnitusModulate: Color,
+    val tinnitusSr: Color,
     val categoryNoise: Color,
     val categoryAmbient: Color,
     val categoryBinaural: Color,
@@ -71,10 +74,13 @@ object MetiqColors {
     private val BinauralBeta = Color(0xFFCB9A2E)
     private val BinauralGamma = Color(0xFFDF6478)
 
+    private val TinnitusAmRi = Color(0xFF00B4D8)
+    private val TinnitusBimodal = Color(0xFF9B5DE5)
     private val TinnitusMatch = Color(0xFF38B2AC)
     private val TinnitusInvert = Color(0xFFE56B6F)
     private val TinnitusNotch = Color(0xFF5E81F4)
     private val TinnitusModulate = Color(0xFFE09F3E)
+    private val TinnitusSr = Color(0xFF52B788)
 
     val Dark = MetiqColorTokens(
         background = Color(0xFF111010),
@@ -109,10 +115,13 @@ object MetiqColors {
         ambientWind = AmbientWind,
         ambientCrickets = AmbientCrickets,
         ambientStream = AmbientStream,
+        tinnitusAmRi = TinnitusAmRi,
+        tinnitusBimodal = TinnitusBimodal,
         tinnitusMatch = TinnitusMatch,
         tinnitusInvert = TinnitusInvert,
         tinnitusNotch = TinnitusNotch,
         tinnitusModulate = TinnitusModulate,
+        tinnitusSr = TinnitusSr,
         categoryNoise = CategoryNoise,
         categoryAmbient = CategoryAmbient,
         categoryBinaural = CategoryBinaural,
@@ -152,10 +161,13 @@ object MetiqColors {
         ambientWind = AmbientWind,
         ambientCrickets = AmbientCrickets,
         ambientStream = AmbientStream,
+        tinnitusAmRi = TinnitusAmRi,
+        tinnitusBimodal = TinnitusBimodal,
         tinnitusMatch = TinnitusMatch,
         tinnitusInvert = TinnitusInvert,
         tinnitusNotch = TinnitusNotch,
         tinnitusModulate = TinnitusModulate,
+        tinnitusSr = TinnitusSr,
         categoryNoise = CategoryNoise,
         categoryAmbient = CategoryAmbient,
         categoryBinaural = CategoryBinaural,

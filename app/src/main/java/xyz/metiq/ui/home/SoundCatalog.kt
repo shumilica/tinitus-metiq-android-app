@@ -83,10 +83,13 @@ internal val BINAURAL_BANDS = listOf(
 internal val BINAURAL_BAND_IDS = BINAURAL_BANDS.map { it.id }.toSet()
 
 internal val TINNITUS_MODES = listOf(
-    TinnitusReliefMode("tinnitus_match", R.string.tinnitus_mode_match, R.string.tinnitus_mode_match_feel, "≈"),
-    TinnitusReliefMode("tinnitus_invert", R.string.tinnitus_mode_invert, R.string.tinnitus_mode_invert_feel, "−"),
+    TinnitusReliefMode("tinnitus_am_ri", R.string.tinnitus_mode_am_ri, R.string.tinnitus_mode_am_ri_feel, "◎"),
+    TinnitusReliefMode("tinnitus_bimodal", R.string.tinnitus_mode_bimodal, R.string.tinnitus_mode_bimodal_feel, "⚡"),
     TinnitusReliefMode("tinnitus_notch", R.string.tinnitus_mode_notch, R.string.tinnitus_mode_notch_feel, "⌖"),
     TinnitusReliefMode("tinnitus_modulate", R.string.tinnitus_mode_modulate, R.string.tinnitus_mode_modulate_feel, "∿"),
+    TinnitusReliefMode("tinnitus_sr", R.string.tinnitus_mode_sr, R.string.tinnitus_mode_sr_feel, "◌"),
+    TinnitusReliefMode("tinnitus_invert", R.string.tinnitus_mode_invert, R.string.tinnitus_mode_invert_feel, "−"),
+    TinnitusReliefMode("tinnitus_match", R.string.tinnitus_mode_match, R.string.tinnitus_mode_match_feel, "≈"),
 )
 internal val TINNITUS_MODE_IDS = TINNITUS_MODES.map { it.id }.toSet()
 
@@ -138,9 +141,12 @@ internal fun binauralAccentFor(id: String): Color {
 internal fun tinnitusAccentFor(id: String): Color {
     val tokens = LocalMetiqColors.current
     return when (id) {
+        "tinnitus_am_ri" -> tokens.tinnitusAmRi
+        "tinnitus_bimodal" -> tokens.tinnitusBimodal
         "tinnitus_invert" -> tokens.tinnitusInvert
         "tinnitus_notch" -> tokens.tinnitusNotch
         "tinnitus_modulate" -> tokens.tinnitusModulate
+        "tinnitus_sr" -> tokens.tinnitusSr
         else -> tokens.tinnitusMatch
     }
 }

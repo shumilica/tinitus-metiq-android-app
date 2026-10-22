@@ -31,7 +31,7 @@ import xyz.metiq.audio.TinnitusMode
 import xyz.metiq.audio.TinnitusWaveform
 
 private const val FALLBACK_BINAURAL_BAND = "alpha"
-private const val FALLBACK_TINNITUS_MODE = "tinnitus_match"
+private const val FALLBACK_TINNITUS_MODE = "tinnitus_am_ri"
 
 @Stable
 internal class MixPlayback {
@@ -50,10 +50,17 @@ internal class MixPlayback {
     internal var onBinauralVolume: (Float) -> Unit = {}
 
     internal var tinnitusDefaultVolume = 0.35f
+    internal var tinnitusThreshold = 0.12f
+    internal var tinnitusMml = 0.35f
     internal var tinnitusHz = 6000f
     internal var tinnitusWaveform = "tone"
     internal var tinnitusBandwidth = 0.5f
     internal var tinnitusPan = 0f
+    internal var tinnitusAmHz = 10f
+    internal var tinnitusEdgeBoost = 0.5f
+    internal var tinnitusStdpDelayMs = 12f
+    internal var tinnitusAntiHabituation = true
+    internal var tinnitusAutoTimer = true
     internal var onTinnitusMode: (String) -> Unit = {}
     internal var onTinnitusVolume: (Float) -> Unit = {}
 
@@ -65,11 +72,26 @@ internal class MixPlayback {
                 in BINAURAL_BAND_IDS ->
                     levels.entries.firstOrNull { it.key in BINAURAL_BAND_IDS }?.value ?: binauralDefaultVolume
                 in TINNITUS_MODE_IDS ->
-                    levels.entries.firstOrNull { it.key in TINNITUS_MODE_IDS }?.value ?: tinnitusDefaultVolume
+                    if (id == "tinnitus_sr") {
+                        tinnitusThreshold.coerceIn(0.02f, 1f)
+                    } else {
+                        levels.entries.firstOrNull { it.key in TINNITUS_MODE_IDS && it.key != "tinnitus_sr" }?.value
+                            ?: tinnitusMml.coerceIn(0.05f, 1f)
+                    }
                 else -> DEFAULT_SOUND_LEVEL
             }
             add(id, level)
         }
+    }
+
+    fun startScheduledTinnitusSession(modeId: String, durationMinutes: Int) {
+        if (modeId !in TINNITUS_MODE_IDS) return
+        val level = if (modeId == "tinnitus_sr") {
+            tinnitusThreshold.coerceIn(0.02f, 1f)
+        } else {
+            tinnitusMml.coerceIn(0.05f, 1f)
+        }
+        add(modeId, level, overrideTimerSeconds = durationMinutes.coerceAtLeast(1) * 60L)
     }
 
     fun setLevel(id: String, level: Float) {
@@ -87,14 +109,37 @@ internal class MixPlayback {
         }
     }
 
-    fun toggleTinnitusAudition() {
+    fun playTinnitusAudition(
+        overrideHz: Float,
+        pulsed: Boolean,
+        volume: Float,
+        wf: String,
+        bw: Float,
+        pan: Float,
+    ) {
         val engine = binder?.engine ?: return
+        val activeModeId = levels.keys.firstOrNull { it in TINNITUS_MODE_IDS }
+        val mode = activeModeId?.let { TinnitusMode.fromId(it) } ?: TinnitusMode.MATCH
+        engine.setTinnitusParams(
+            hz = overrideHz,
+            mode = mode,
+            waveform = TinnitusWaveform.fromKey(wf),
+            bandwidth = bw,
+            pan = pan,
+            amHz = tinnitusAmHz,
+            edgeBoost = tinnitusEdgeBoost,
+            stdpDelayMs = tinnitusStdpDelayMs,
+            antiHabituation = tinnitusAntiHabituation,
+        )
         if (tinnitusAuditioning) {
-            engine.stopTinnitusAudition()
-            tinnitusAuditioning = false
+            engine.setAuditionState(pulsed = pulsed, overrideHz = overrideHz)
+            engine.setLayerVolume("tinnitus_audition", volume.coerceIn(0.01f, 1f))
         } else {
-            syncTinnitusEngineParams()
-            engine.startTinnitusAudition(tinnitusDefaultVolume)
+            engine.startTinnitusAudition(
+                volume = volume.coerceIn(0.01f, 1f),
+                pulsed = pulsed,
+                overrideHz = overrideHz,
+            )
             tinnitusAuditioning = true
         }
     }
@@ -102,6 +147,8 @@ internal class MixPlayback {
     fun stopTinnitusAudition() {
         binder?.engine?.stopTinnitusAudition()
         tinnitusAuditioning = false
+        // Restore locked engine parameters after wizard auditioning
+        syncTinnitusEngineParams()
     }
 
     fun syncTinnitusEngineParams(
@@ -109,11 +156,19 @@ internal class MixPlayback {
         waveform: String = tinnitusWaveform,
         bandwidth: Float = tinnitusBandwidth,
         pan: Float = tinnitusPan,
+        amHz: Float = tinnitusAmHz,
+        edgeBoost: Float = tinnitusEdgeBoost,
+        stdpDelayMs: Float = tinnitusStdpDelayMs,
+        antiHabituation: Boolean = tinnitusAntiHabituation,
     ) {
         tinnitusHz = hz
         tinnitusWaveform = waveform
         tinnitusBandwidth = bandwidth
         tinnitusPan = pan
+        tinnitusAmHz = amHz
+        tinnitusEdgeBoost = edgeBoost
+        tinnitusStdpDelayMs = stdpDelayMs
+        tinnitusAntiHabituation = antiHabituation
         val activeModeId = levels.keys.firstOrNull { it in TINNITUS_MODE_IDS }
         val mode = activeModeId?.let { TinnitusMode.fromId(it) } ?: TinnitusMode.MATCH
         binder?.engine?.setTinnitusParams(
@@ -122,6 +177,10 @@ internal class MixPlayback {
             waveform = TinnitusWaveform.fromKey(waveform),
             bandwidth = bandwidth,
             pan = pan,
+            amHz = amHz,
+            edgeBoost = edgeBoost,
+            stdpDelayMs = stdpDelayMs,
+            antiHabituation = antiHabituation,
         )
     }
 
@@ -156,8 +215,9 @@ internal class MixPlayback {
         }
     }
 
-    private fun add(id: String, level: Float) {
-        val engine = binder?.engine ?: return
+    private fun add(id: String, level: Float, overrideTimerSeconds: Long? = null) {
+        val bound = binder ?: return
+        val engine = bound.engine
         when (id) {
             in NOISE_IDS -> engine.startLayer(id, "audio/noise/$id.ogg", level, warmthEligible = true)
             in AMBIENT_IDS -> engine.startLayer(id, "audio/ambient/$id.ogg", level)
@@ -166,7 +226,6 @@ internal class MixPlayback {
                 val current = levels.keys.firstOrNull { it in BINAURAL_BAND_IDS }
                 engine.setBinaural(BINAURAL_CARRIER_HZ, band.beatHz)
                 if (current != null) {
-                    // Retune the running synth instead of restarting it.
                     levels.remove(current)
                     engine.setLayerVolume(BINAURAL_ID, level)
                 } else {
@@ -184,6 +243,10 @@ internal class MixPlayback {
                     waveform = TinnitusWaveform.fromKey(tinnitusWaveform),
                     bandwidth = tinnitusBandwidth,
                     pan = tinnitusPan,
+                    amHz = tinnitusAmHz,
+                    edgeBoost = tinnitusEdgeBoost,
+                    stdpDelayMs = tinnitusStdpDelayMs,
+                    antiHabituation = tinnitusAntiHabituation,
                 )
                 if (current != null) {
                     levels.remove(current)
@@ -192,6 +255,12 @@ internal class MixPlayback {
                     engine.startTinnitus(level)
                 }
                 onTinnitusMode(id)
+
+                val sessionSecs = overrideTimerSeconds
+                    ?: if (tinnitusAutoTimer) mode.defaultSessionSeconds else null
+                if (sessionSecs != null && sessionSecs > 0L) {
+                    bound.startSleepTimer(sessionSecs)
+                }
             }
 
             else -> return
@@ -283,10 +352,17 @@ internal fun rememberMixPlayback(
     onBinauralVolume: (Float) -> Unit,
     savedTinnitusMode: String? = null,
     tinnitusVolume: Float = 0.35f,
+    tinnitusThreshold: Float = 0.12f,
+    tinnitusMml: Float = 0.35f,
     tinnitusHz: Float = 6000f,
     tinnitusWaveform: String = "tone",
     tinnitusBandwidth: Float = 0.5f,
     tinnitusPan: Float = 0f,
+    tinnitusAmHz: Float = 10f,
+    tinnitusEdgeBoost: Float = 0.5f,
+    tinnitusStdpDelayMs: Float = 12f,
+    tinnitusAntiHabituation: Boolean = true,
+    tinnitusAutoTimer: Boolean = true,
     onTinnitusMode: (String) -> Unit = {},
     onTinnitusVolume: (Float) -> Unit = {},
 ): MixPlayback {
@@ -299,6 +375,9 @@ internal fun rememberMixPlayback(
         playback.onBinauralBand = onBinauralBand
         playback.onBinauralVolume = onBinauralVolume
         playback.tinnitusDefaultVolume = tinnitusVolume
+        playback.tinnitusThreshold = tinnitusThreshold
+        playback.tinnitusMml = tinnitusMml
+        playback.tinnitusAutoTimer = tinnitusAutoTimer
         playback.onTinnitusMode = onTinnitusMode
         playback.onTinnitusVolume = onTinnitusVolume
         playback.syncTinnitusEngineParams(
@@ -306,6 +385,10 @@ internal fun rememberMixPlayback(
             waveform = tinnitusWaveform,
             bandwidth = tinnitusBandwidth,
             pan = tinnitusPan,
+            amHz = tinnitusAmHz,
+            edgeBoost = tinnitusEdgeBoost,
+            stdpDelayMs = tinnitusStdpDelayMs,
+            antiHabituation = tinnitusAntiHabituation,
         )
     }
 

@@ -19,6 +19,10 @@ import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -32,7 +36,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import xyz.metiq.DEFAULT_TINNITUS_SCHEDULE_SLOTS
 import xyz.metiq.R
+import xyz.metiq.TinnitusLogEntry
+import xyz.metiq.TinnitusScheduleSlot
 import xyz.metiq.ui.theme.Inter
 import xyz.metiq.ui.theme.LocalMetiqColors
 
@@ -50,15 +57,29 @@ internal fun CategorySheet(
     tinnitusWaveform: String = "tone",
     tinnitusBandwidth: Float = 0.5f,
     tinnitusPan: Float = 0f,
+    tinnitusThreshold: Float = 0.12f,
+    tinnitusMml: Float = 0.35f,
+    tinnitusCalibrated: Boolean = false,
+    tinnitusAmHz: Float = 10f,
+    tinnitusEdgeBoost: Float = 0.5f,
+    tinnitusStdpDelayMs: Float = 12f,
+    tinnitusAntiHabituation: Boolean = true,
+    tinnitusAutoTimer: Boolean = true,
+    tinnitusHistory: List<TinnitusLogEntry> = emptyList(),
+    tinnitusRemindersEnabled: Boolean = false,
+    tinnitusScheduleSlots: List<TinnitusScheduleSlot> = DEFAULT_TINNITUS_SCHEDULE_SLOTS,
     tinnitusAuditioning: Boolean = false,
-    onTinnitusHzPreview: (Float) -> Unit = {},
-    onTinnitusHzCommit: (Float) -> Unit = {},
-    onTinnitusWaveformChange: (String) -> Unit = {},
-    onTinnitusBandwidthPreview: (Float) -> Unit = {},
-    onTinnitusBandwidthCommit: (Float) -> Unit = {},
-    onTinnitusPanPreview: (Float) -> Unit = {},
-    onTinnitusPanCommit: (Float) -> Unit = {},
-    onToggleTinnitusAudition: () -> Unit = {},
+    onTinnitusAuditionPlay: (overrideHz: Float, pulsed: Boolean, volume: Float, wf: String, bw: Float, p: Float) -> Unit = { _, _, _, _, _, _ -> },
+    onTinnitusAuditionStop: () -> Unit = {},
+    onSaveTinnitusCalibration: (hz: Float, waveform: String, bandwidth: Float, pan: Float, threshold: Float, mml: Float) -> Unit = { _, _, _, _, _, _ -> },
+    onTinnitusAmHzChange: (Float) -> Unit = {},
+    onTinnitusEdgeBoostChange: (Float) -> Unit = {},
+    onTinnitusStdpDelayChange: (Float) -> Unit = {},
+    onTinnitusAntiHabituationChange: (Boolean) -> Unit = {},
+    onTinnitusAutoTimerChange: (Boolean) -> Unit = {},
+    onTinnitusRemindersEnabledChange: (Boolean) -> Unit = {},
+    onTinnitusScheduleSlotsChange: (List<TinnitusScheduleSlot>) -> Unit = {},
+    onStartScheduledTinnitusSession: (modeId: String, durationMinutes: Int) -> Unit = { _, _ -> },
 ) {
     val ids = category.soundIds()
     val rows: @Composable ColumnScope.() -> Unit = {
@@ -101,47 +122,84 @@ internal fun CategorySheet(
             },
             content = rows,
         )
-        SoundCategory.TINNITUS -> SoundSheet(
-            title = stringResource(R.string.category_tinnitus),
-            subtitle = stringResource(R.string.sheet_tinnitus_subtitle),
-            onDismiss = onDismiss,
-            notice = {
-                SheetNotice(
-                    icon = Icons.Outlined.Headphones,
-                    text = stringResource(R.string.tinnitus_headphone_notice),
-                )
-            },
-            content = {
-                val hasActiveReliefMode = levels.keys.any { it in TINNITUS_MODE_IDS }
-                TinnitusTunerCard(
-                    hz = tinnitusHz,
-                    waveform = tinnitusWaveform,
-                    bandwidth = tinnitusBandwidth,
-                    pan = tinnitusPan,
-                    auditioning = tinnitusAuditioning,
-                    hasActiveReliefMode = hasActiveReliefMode,
-                    onHzPreview = onTinnitusHzPreview,
-                    onHzCommit = onTinnitusHzCommit,
-                    onWaveformChange = onTinnitusWaveformChange,
-                    onBandwidthPreview = onTinnitusBandwidthPreview,
-                    onBandwidthCommit = onTinnitusBandwidthCommit,
-                    onPanPreview = onTinnitusPanPreview,
-                    onPanCommit = onTinnitusPanCommit,
-                    onToggleAudition = onToggleTinnitusAudition,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.tinnitus_modes_header),
-                    color = LocalMetiqColors.current.textSecondary,
-                    style = TextStyle(
-                        fontFamily = Inter,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                )
-                rows()
-            },
-        )
+        SoundCategory.TINNITUS -> {
+            // Default to Tab 1 ("1. My Tinnitus Profile") if not yet calibrated,
+            // or Tab 2 ("2. Therapies & Schedule") if already calibrated!
+            var selectedTab by remember(tinnitusCalibrated) {
+                mutableIntStateOf(if (tinnitusCalibrated) 1 else 0)
+            }
+            SoundSheet(
+                title = stringResource(R.string.category_tinnitus),
+                subtitle = stringResource(R.string.sheet_tinnitus_subtitle),
+                onDismiss = onDismiss,
+                notice = {
+                    SheetNotice(
+                        icon = Icons.Outlined.Headphones,
+                        text = stringResource(R.string.tinnitus_headphone_notice),
+                    )
+                },
+                content = {
+                    TinnitusTabSelector(
+                        selectedTab = selectedTab,
+                        calibrated = tinnitusCalibrated,
+                        onSelectTab = { tab ->
+                            onTinnitusAuditionStop()
+                            selectedTab = tab
+                        },
+                    )
+                    if (selectedTab == 0) {
+                        TinnitusProfileTabContent(
+                            hz = tinnitusHz,
+                            waveform = tinnitusWaveform,
+                            bandwidth = tinnitusBandwidth,
+                            pan = tinnitusPan,
+                            threshold = tinnitusThreshold,
+                            mml = tinnitusMml,
+                            calibrated = tinnitusCalibrated,
+                            history = tinnitusHistory,
+                            auditioning = tinnitusAuditioning,
+                            onAuditionPlay = onTinnitusAuditionPlay,
+                            onAuditionStop = onTinnitusAuditionStop,
+                            onSaveCalibration = onSaveTinnitusCalibration,
+                            onOpenTherapiesTab = { selectedTab = 1 },
+                        )
+                    } else {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.tinnitus_modes_header),
+                            color = LocalMetiqColors.current.textSecondary,
+                            style = TextStyle(
+                                fontFamily = Inter,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                        )
+                        rows()
+                        Spacer(Modifier.height(8.dp))
+                        TinnitusTherapiesHeader(
+                            calibratedHz = tinnitusHz,
+                            threshold = tinnitusThreshold,
+                            mml = tinnitusMml,
+                            amHz = tinnitusAmHz,
+                            edgeBoost = tinnitusEdgeBoost,
+                            stdpDelayMs = tinnitusStdpDelayMs,
+                            antiHabituation = tinnitusAntiHabituation,
+                            autoTimer = tinnitusAutoTimer,
+                            remindersEnabled = tinnitusRemindersEnabled,
+                            scheduleSlots = tinnitusScheduleSlots,
+                            onAmHzChange = onTinnitusAmHzChange,
+                            onEdgeBoostChange = onTinnitusEdgeBoostChange,
+                            onStdpDelayChange = onTinnitusStdpDelayChange,
+                            onAntiHabituationChange = onTinnitusAntiHabituationChange,
+                            onAutoTimerChange = onTinnitusAutoTimerChange,
+                            onRemindersEnabledChange = onTinnitusRemindersEnabledChange,
+                            onScheduleSlotsChange = onTinnitusScheduleSlotsChange,
+                            onStartScheduledSession = onStartScheduledTinnitusSession,
+                        )
+                    }
+                },
+            )
+        }
     }
 }
 
